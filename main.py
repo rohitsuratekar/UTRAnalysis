@@ -8,6 +8,7 @@
 #  https://www.ensembl.org/biomart
 #  Ensembl Genes 101 > Zebrafish Genes (GRCz11) > Export
 
-from analysis.multiqc import run
+
+from analysis.statistics import run
 
 run()

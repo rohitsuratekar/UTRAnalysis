@@ -131,3 +131,5 @@ dmypy.json
 plot.png
 test/
 multiqcdata/
+deseq2/*
+salmon_counts/*
