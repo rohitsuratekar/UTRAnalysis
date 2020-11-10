@@ -133,3 +133,4 @@ test/
 multiqcdata/
 deseq2/*
 salmon_counts/*
+out.csv
