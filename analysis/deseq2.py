@@ -102,10 +102,11 @@ def draw_network(source):
     graph.draw("plot.png")
 
 
-def map_terms(no_of_terms, source, condition):
+def map_terms(no_of_terms, source, condition, axis_offset=50):
+    # plt.figure(figsize=(9, 5))
+    plt.figure(figsize=(7, 5))
     up_color = p.blue
     down_color = p.red
-    axis_offset = 5
     df = pd.read_csv("out.csv")
     # Remove the base node
     df = df[~df["native"].isin(SOURCE_NODES)]
@@ -135,7 +136,7 @@ def map_terms(no_of_terms, source, condition):
 
     plt.xlim([-1 * max_no, max_no])
     plt.yticks([])
-    plt.xlabel("Log$_{10}$ (p-value) [x -1 for Up]")
+    plt.xlabel("Log$_{10}$ (p-value) [for Up: -1xValue]")
 
     handles = [
         Patch(facecolor=down_color(shade=40), label="Down"),
@@ -154,8 +155,9 @@ def map_terms(no_of_terms, source, condition):
     plt.show()
 
 
-def test(source):
+def plot_network(source):
     df = pd.read_csv("out.csv")
+    df = df[df["p_value"] < 0.05]
     df = df[df["source"] == source]
     df = df.sort_values(by="p_value")
     df = df[~df["native"].isin(SOURCE_NODES)]
@@ -198,9 +200,6 @@ def test(source):
 
 
 def run():
-    source = "GO:CC"
-    # go_enrichment_analysis("deseq2/salmon_mars_vs_whole.csv")
-    # draw_terms(10, source, "MARS/W (WT)")
-    # draw_network(source)
-    # map_terms(10, source, "MARS/W (WT)")
-    test(source)
+    source = "KEGG"
+    # go_enrichment_analysis("deseq2/salmon_hsf_vs_whole.csv")
+    map_terms(10, source, "HSF/W (WT)", axis_offset=10)

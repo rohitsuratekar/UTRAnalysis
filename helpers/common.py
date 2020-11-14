@@ -13,14 +13,6 @@ from helpers.constants import *
 from collections import defaultdict
 
 
-def get_de_genes() -> np.ndarray:
-    df = pd.read_csv(FILE_DIFF)
-    df = df[df["padj"] <= P_VALUE_CUTOFF].reset_index(drop=True)
-    df = df[(df["log2FoldChange"] <= LOG_2_FOLD_CUTOFF * -1) | (
-            df["log2FoldChange"] >= LOG_2_FOLD_CUTOFF)]
-    return df["gene_id"].values
-
-
 def extract_utr_sequence(utr: int) -> dict:
     if utr not in [5, 3]:
         raise Exception(f"UTR should be either 5 or 3. You have provided '"
