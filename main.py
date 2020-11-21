@@ -9,6 +9,6 @@
 #  Ensembl Genes 101 > Zebrafish Genes (GRCz11) > Export
 
 
-from analysis.utr import run
+from analysis.meme import run
 
 run()

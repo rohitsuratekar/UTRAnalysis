@@ -136,3 +136,4 @@ salmon_counts/*
 out.csv
 data/*
 mito/*
+fasta/*

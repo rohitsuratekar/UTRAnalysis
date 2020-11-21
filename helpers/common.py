@@ -7,10 +7,23 @@
 #
 #  Common functions
 
-import numpy as np
+from collections import defaultdict
 import pandas as pd
 from helpers.constants import *
-from collections import defaultdict
+
+
+def get_genes(*, direction, condition, atlas):
+    condition = condition.strip().replace(" ", "_")
+    filename = f"mito/{direction}_{atlas}_{condition}.csv"
+    df = pd.read_csv(filename)
+    if "FDR" in df.columns:
+        df = df[df["FDR"] <= 0.05]
+    if "log2FC" in df.columns:
+        if direction == "up":
+            df = df[df["log2FC"] > 0]
+        else:
+            df = df[df["log2FC"] < 0]
+    return df["gene_id"].to_numpy()
 
 
 def extract_utr_sequence(utr: int) -> dict:
