@@ -37,7 +37,7 @@ def generate_all():
     folder = "fasta"
     if not os.path.isdir(folder):
         os.mkdir(folder)
-    direction = "up"
+    direction = "down"
     atlas = "mitocarta"
     conditions = ["hsf wt", "hsf mia40", "mars wt", "mars mia40"]
     for condition in conditions:
@@ -50,25 +50,27 @@ def generate_all():
 
 
 def run_streme():
+    folder = "streme"
+    if not os.path.isdir(folder):
+        os.mkdir(folder)
     meme_path = ":/home/dex/Softwares/meme/bin"
     meme_path += ":/home/dex/Softwares/meme/libexec/meme-5.2.0"
     targets = [
-        "up_mitocarta_mars_mia40_3utr.fasta",
-        "up_mitocarta_mars_wt_3utr.fasta",
-        "up_mitocarta_hsf_mia40_3utr.fasta",
-        "up_mitocarta_hsf_wt_3utr.fasta"
+        "down_mitocarta_mars_mia40_3utr.fasta",
+        "down_mitocarta_mars_wt_3utr.fasta",
+        "down_mitocarta_hsf_mia40_3utr.fasta",
+        "down_mitocarta_hsf_wt_3utr.fasta"
     ]
     control = "./fasta/control.fasta"
     env = os.environ.copy()
     env['PATH'] += meme_path
     for i in range(len(targets)):
         name = targets[i].replace("_3utr.fasta", '')
-        output_path = f"./streme/{name}"
+        output_path = f"./{folder}/{name}"
         primary = f"./fasta/{targets[i]}"
 
         opts_random = [
             "streme",
-            "--o", output_path,
             "--objfun", "de",
             "--pvt", "0.05",
             "--patience", "1",
@@ -77,13 +79,49 @@ def run_streme():
         ]
         opts_all = [x for x in opts_random]
         opts_all.extend([
-            "--n", control
+            "--n", control,
+            "--o", f"{output_path}_all",
+        ])
+        opts_random.extend([
+            "--o", f"{output_path}_control",
         ])
         opts_all.extend(["--p", primary])
         opts_random.extend(["--p", primary])
         # For random
         subprocess.run(opts_random, env=env)
         subprocess.run(opts_all, env=env)
+
+
+def extract_motifs(folder):
+    final_data = {}
+    for f in os.listdir(folder):
+        target = f"{folder}/{f}/streme.txt"
+        with open(target) as file:
+            data = file.readlines()
+
+        all_motifs = []
+        for i in range(len(data)):
+            if data[i].startswith("MOTIF"):
+                motif = data[i].strip().split(" ")[1]
+                motif = motif.split("-")[1]
+                pv = data[i + 1].strip().split("P=")
+                pv = pv[1].strip().split(" ")[0]
+                pv = float(pv)
+                if pv <= 0.05:
+                    all_motifs.append((motif, pv))
+
+        final_data[f] = all_motifs
+    return final_data
+
+
+def test():
+    motifs = extract_motifs("streme")
+    conditions = ['general', 'all', 'mia40']
+    for d in motifs:
+        if all([x in d for x in conditions]):
+            print(f'{d}\tp-value')
+            for m1, m2 in motifs[d]:
+                print(f"{m1}\t{m2}")
 
 
 def run():
