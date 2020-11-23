@@ -97,5 +97,61 @@ def plot_utr_length_distribution():
     plt.show()
 
 
+def common_gene_analysis():
+    x_lim = 2000
+    direction = "up"
+    atlas = "general"
+    wt = get_genes(direction=direction,
+                   condition="mars wt",
+                   atlas=atlas)
+    mia40 = get_genes(direction=direction,
+                      condition="mars mia40",
+                      atlas=atlas)
+
+    common = list(set(wt).intersection(set(mia40)))
+    wt_only = list(set(wt).difference(set(mia40)))
+    mia40_only = list(set(mia40).difference(set(wt)))
+
+    conditions = [common, wt_only, mia40_only]
+    labels = [f"common (n={len(common)})",
+              f"only wt (n={len(wt_only)})",
+              f"only mia40 (n={len(mia40_only)})"]
+    colors = [p.gray, p.blue, p.red]
+    samples = []
+
+    for i in range(len(conditions)):
+        raw = extract_utr_sequence(3)
+        utr = filter_utrs(conditions[i], raw)
+        values = [len(x[1]) for x in utr]
+        samples.append([x for x in values])
+        density_utr = gaussian_kde(values)
+        xs = np.linspace(0, x_lim, 200)
+        plt.plot(xs, density_utr(xs), color=colors[i](),
+                 lw=2, label=f"{labels[i]}",
+                 zorder=3)
+
+    tt1 = ttest_ind(a=samples[0], b=samples[1], equal_var=False)
+    tt2 = ttest_ind(a=samples[0], b=samples[2], equal_var=False)
+
+    plt.xlabel("UTR length")
+    plt.ylabel("Frequency (density)")
+    plt.legend(loc=0)
+    plt.grid(zorder=0, ls=":")
+    ax = plt.gca()
+    ax.set_facecolor(p.gray(shade=15))
+
+    plt.annotate(f"p-value : "
+                 f"\n common vs wt : {round(tt1[1], 30)}"
+                 f"\n common vs mia40 : {round(tt2[1], 8)}"
+                 f"\n\nLengths above {x_lim}\nare not shown",
+                 (0.96, 0.78), ha="right", xycoords="axes fraction", va="top",
+                 fontstyle="italic", color=p.gray(shade=70))
+
+    plt.title(f"{direction}-regulated genes ({atlas})")
+    plt.tight_layout()
+    plt.savefig("plot.png", dpi=300)
+    plt.show()
+
+
 def run():
-    plot_utr_length_distribution()
+    common_gene_analysis()

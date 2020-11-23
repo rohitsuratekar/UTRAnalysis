@@ -116,7 +116,7 @@ def extract_motifs(folder):
 
 def test():
     motifs = extract_motifs("streme")
-    conditions = ['general', 'all', 'mia40']
+    conditions = ['down']
     for d in motifs:
         if all([x in d for x in conditions]):
             print(f'{d}\tp-value')
@@ -125,4 +125,4 @@ def test():
 
 
 def run():
-    run_streme()
+    test()
