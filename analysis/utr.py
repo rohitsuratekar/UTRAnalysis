@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from SecretColors import Palette
+from matplotlib.patches import Patch
 from scipy.stats import gaussian_kde
 from scipy.stats import ttest_ind
 
@@ -38,9 +39,9 @@ def filter_utrs(genes, seq) -> list:
 def plot_utr_length_distribution():
     x_lim = 2000
     colors = [p.cyan, p.magenta]
-    conditions = ["hsf mia40", "mars mia40"]
-    atlas = "mitocarta"
-    direction = "down"
+    conditions = ["hsf wt", "mars wt"]
+    atlas = "general"
+    direction = "up"
     samples = []
     if atlas == "mitocarta":
         colors = [p.blue, p.red]
@@ -82,7 +83,7 @@ def plot_utr_length_distribution():
     plt.grid(zorder=0, ls=":")
     ax = plt.gca()
     ax.set_facecolor(p.gray(shade=15))
-    plt.annotate(f"p-value : {round(tt[1], 6)}"
+    plt.annotate(f"p-value : {tt[1]}"
                  f"\n\nLengths above {x_lim}\nare not shown"
                  f"\n\n n = {total[0]} ({conditions[0]}),"
                  f"\n {total[1]} ({conditions[1]})",
@@ -153,5 +154,70 @@ def common_gene_analysis():
     plt.show()
 
 
+def violin_plots():
+    direction = "up"
+    atlas = "general"
+
+    conditions = ["mars wt", "mars mia40", "hsf wt ", "hsf mia40"]
+    colors = [p.blue(shade=40), p.red(shade=40),
+              p.blue(shade=40), p.red(shade=40)]
+    labels = ["mars", "hsf"]
+    samples = []
+    counter = 0
+    for i, condition in enumerate(conditions):
+        genes = get_genes(direction=direction,
+                          condition=condition,
+                          atlas=atlas)
+        raw = extract_utr_sequence(3)
+        utr = filter_utrs(genes, raw)
+        values = [len(x[1]) for x in utr]
+        samples.append([x for x in values])
+        vl = plt.violinplot(values,
+                            vert=False,
+                            positions=[counter],
+                            showextrema=False)
+        for v in vl:
+            if v == "bodies":
+                for b in vl[v]:
+                    b.set_color(colors[i])
+                    b.set_alpha(1)
+                    m = np.mean(b.get_paths()[0].vertices[:, 1])
+                    if i % 2 == 1:
+                        b.get_paths()[0].vertices[:, 1] = np.clip(
+                            b.get_paths()[0].vertices[:, 1], -np.inf, m)
+                    else:
+                        b.get_paths()[0].vertices[:, 1] = np.clip(
+                            b.get_paths()[0].vertices[:, 1], m, np.inf)
+
+        if i % 2 != 0:
+            counter += 1
+
+    # Welch's unequal variances t-test
+    tt1 = ttest_ind(a=samples[0], b=samples[1], equal_var=False)
+    tt2 = ttest_ind(a=samples[2], b=samples[3], equal_var=False)
+
+    plt.xlabel("UTR Length")
+    plt.gca().set_facecolor(p.gray(shade=10))
+    plt.title(f"{direction}-regulated genes ({atlas})")
+    plt.yticks(range(len(labels)), labels)
+    handles = [
+        Patch(facecolor=p.blue(shade=40), label="wt"),
+        Patch(facecolor=p.red(shade=40), label="mia40"),
+    ]
+    plt.annotate(f"p-value : "
+                 f"\n MARS (wt vs mia40) : {tt1[1]}"
+                 f"\n  HSF (wt vs mia40) : {tt2[1]}",
+                 (0.96, 0.5), ha="right",
+                 xycoords="axes fraction",
+                 va="center",
+                 fontstyle="italic", color=p.gray(shade=70))
+
+    plt.legend(handles=handles, loc=0)
+    plt.ylim(-0.5, 1.5)
+    plt.tight_layout()
+    plt.savefig("plot.png", dpi=300)
+    plt.show()
+
+
 def run():
-    common_gene_analysis()
+    violin_plots()
