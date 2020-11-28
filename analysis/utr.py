@@ -36,20 +36,25 @@ def filter_utrs(genes, seq) -> list:
     return df
 
 
-def plot_utr_length_distribution():
+def plot_utr_length_distribution(conditions, direction, atlas,
+                                 filename="plot.png",
+                                 threshold=0, use_limit=None
+                                 ):
+    plt.clf()
     x_lim = 2000
     colors = [p.cyan, p.magenta]
-    conditions = ["hsf wt", "mars wt"]
-    atlas = "general"
-    direction = "up"
+
+    # Adjustments
+    if direction == "down":
+        colors = [p.green, p.orange]
     samples = []
-    if atlas == "mitocarta":
-        colors = [p.blue, p.red]
     total = []
     for i, condition in enumerate(conditions):
         genes = get_genes(direction=direction,
                           condition=condition,
-                          atlas=atlas)
+                          atlas=atlas,
+                          threshold=threshold,
+                          use_limit=use_limit)
         raw = extract_utr_sequence(3)
         utr = filter_utrs(genes, raw)
         values = [len(x[1]) for x in utr]
@@ -69,6 +74,7 @@ def plot_utr_length_distribution():
         align = "right"
         if i == 0:
             align = "left"
+
         plt.annotate(f"{round(mean_value, 2)}",
                      xy=(mean_value, txt_loc),
                      rotation=90, ha=align, va="center",
@@ -83,49 +89,66 @@ def plot_utr_length_distribution():
     plt.grid(zorder=0, ls=":")
     ax = plt.gca()
     ax.set_facecolor(p.gray(shade=15))
-    plt.annotate(f"p-value : {tt[1]}"
+    round_fig = int(np.log10(tt[1])) * -1 + 1
+    plt.annotate(f"p-value : {round(tt[1], round_fig)}"
                  f"\n\nLengths above {x_lim}\nare not shown"
                  f"\n\n n = {total[0]} ({conditions[0]}),"
                  f"\n {total[1]} ({conditions[1]})",
                  (0.96, 0.81), ha="right", xycoords="axes fraction", va="top",
                  fontstyle="italic", color=p.gray(shade=70))
 
-    plt.title(f"3' UTR Length Distribution of {direction} regulated genes "
-              f"({atlas})")
+    if use_limit is not None:
+        tsh = f"{use_limit[0]} <= Log2FC <= {use_limit[1]}"
+    else:
+        if direction == "up":
+            tsh = f"Log2FC >= {threshold}"
+        else:
+            tsh = f"Log2FC <= {threshold}"
+    plt.title(f"{direction} regulated genes "
+              f"[{atlas}, {tsh}]")
     plt.tight_layout()
-    plt.savefig("plot.png", dpi=300)
+    plt.savefig(filename, dpi=300)
+    # plt.show()
 
-    plt.show()
 
-
-def common_gene_analysis():
+def common_gene_analysis(conditions, *,
+                         direction, atlas, threshold, use_limit,
+                         filename="plot.png"):
+    plt.clf()
     x_lim = 2000
-    direction = "up"
-    atlas = "general"
     wt = get_genes(direction=direction,
-                   condition="mars wt",
-                   atlas=atlas)
+                   condition=conditions[0],
+                   atlas=atlas,
+                   use_limit=use_limit,
+                   threshold=threshold)
     mia40 = get_genes(direction=direction,
-                      condition="mars mia40",
-                      atlas=atlas)
+                      condition=conditions[1],
+                      atlas=atlas,
+                      use_limit=use_limit,
+                      threshold=threshold)
 
     common = list(set(wt).intersection(set(mia40)))
     wt_only = list(set(wt).difference(set(mia40)))
     mia40_only = list(set(mia40).difference(set(wt)))
 
-    conditions = [common, wt_only, mia40_only]
+    new_conds = [common, wt_only, mia40_only]
     labels = [f"common (n={len(common)})",
-              f"only wt (n={len(wt_only)})",
-              f"only mia40 (n={len(mia40_only)})"]
+              f"{conditions[0]} (n={len(wt_only)})",
+              f"{conditions[1]} (n={len(mia40_only)})"]
     colors = [p.gray, p.blue, p.red]
     samples = []
 
-    for i in range(len(conditions)):
+    for i in range(len(new_conds)):
         raw = extract_utr_sequence(3)
-        utr = filter_utrs(conditions[i], raw)
+        utr = filter_utrs(new_conds[i], raw)
         values = [len(x[1]) for x in utr]
         samples.append([x for x in values])
-        density_utr = gaussian_kde(values)
+        try:
+            density_utr = gaussian_kde(values)
+        except ValueError:
+            print("Skiped.....")
+            print(filename)
+            return
         xs = np.linspace(0, x_lim, 200)
         plt.plot(xs, density_utr(xs), color=colors[i](),
                  lw=2, label=f"{labels[i]}",
@@ -141,17 +164,27 @@ def common_gene_analysis():
     ax = plt.gca()
     ax.set_facecolor(p.gray(shade=15))
 
+    round_fig1 = int(np.log10(tt1[1])) * -1 + 1
+    round_fig2 = int(np.log10(tt2[1])) * -1 + 1
     plt.annotate(f"p-value : "
-                 f"\n common vs wt : {round(tt1[1], 30)}"
-                 f"\n common vs mia40 : {round(tt2[1], 8)}"
+                 f"\n common vs {conditions[0]} : {round(tt1[1], round_fig1)}"
+                 f"\n common vs {conditions[1]} : {round(tt2[1], round_fig2)}"
                  f"\n\nLengths above {x_lim}\nare not shown",
                  (0.96, 0.78), ha="right", xycoords="axes fraction", va="top",
                  fontstyle="italic", color=p.gray(shade=70))
 
-    plt.title(f"{direction}-regulated genes ({atlas})")
+    if use_limit is not None:
+        tsh = f"{use_limit[0]} <= Log2FC <= {use_limit[1]}"
+    else:
+        if direction == "up":
+            tsh = f"Log2FC >= {threshold}"
+        else:
+            tsh = f"Log2FC <= {threshold}"
+    plt.title(f"{direction} regulated genes "
+              f"[{atlas}, {tsh}]")
     plt.tight_layout()
-    plt.savefig("plot.png", dpi=300)
-    plt.show()
+    plt.savefig(filename, dpi=300)
+    # plt.show()
 
 
 def violin_plots():
@@ -219,5 +252,92 @@ def violin_plots():
     plt.show()
 
 
+def generate_combinations():
+    atlas = "mitocarta"
+    thresholds = [
+        0.5, -0.5, 1, -1,
+        [-1, -0.5], [0.5, 1]
+    ]
+    cond_pairs = [
+        ("hsf wt", "mars wt", "wt"),
+        ("hsf mia40", "mars mia40", "mia40"),
+        ("hsf wt", "hsf mia40", "hsf"),
+        ("mars wt", "mars mia40", "mars"),
+    ]
+
+    fig_pair = []
+    com_pair = []
+    current = []
+    current_com = []
+    for pair in cond_pairs:
+        for threshold in thresholds:
+            use_limit = None
+            if isinstance(threshold, list):
+                t = threshold[0]
+                use_limit = threshold
+                th_str = "_".join([str(x) for x in threshold])
+            else:
+                t = threshold
+                th_str = f"{threshold}"
+            if t < 0:
+                direction = "down"
+            else:
+                direction = "up"
+
+            th_str = th_str.replace("-", "")
+            filename = f"figs/{atlas[:3]}_{direction}_{pair[2]}_{th_str}"
+            filename = filename.replace("-", "")
+            filename_com = f"{filename}_cog.png"
+            filename += ".png"
+            plot_utr_length_distribution(direction=direction,
+                                         conditions=(pair[0], pair[1]),
+                                         atlas=atlas,
+                                         threshold=threshold,
+                                         use_limit=use_limit,
+                                         filename=filename)
+            common_gene_analysis(direction=direction,
+                                 conditions=(pair[0], pair[1]),
+                                 atlas=atlas,
+                                 threshold=threshold,
+                                 use_limit=use_limit,
+                                 filename=filename_com)
+
+            current.append(filename)
+            current_com.append(filename_com)
+            if len(current) == 2:
+                fig_pair.append((th_str, current))
+                com_pair.append((th_str, current_com))
+                current = []
+                current_com = []
+
+    with open("figs.tex", "w") as f:
+        for d in fig_pair:
+            print(get_latex_fig(d, "template"), file=f)
+        for d in com_pair:
+            print(get_latex_fig(d, "template2", prefix="cog_"), file=f)
+
+
+def get_latex_fig(data, template, prefix=""):
+    log2 = data[0]
+    files = sorted(data[1])
+    with open(template) as f:
+        tp = f.readlines()
+    lines = "".join(tp)
+    lines = lines.replace("$FIG1", files[0])
+    lines = lines.replace("$FIG2", files[1])
+    label = str(files[0]).replace("figs/gen_", "")
+    label = label.replace("up_", "").replace("down_", "").replace(".png", "")
+    label = prefix + label
+    lines = lines.replace("$LAB", label)
+    lines = lines.replace("$COND", label.split("_")[0])
+    if "_" in log2:
+        log_txt = f"Log2FC between {' and '.join(log2.split('_'))}"
+    else:
+        log_txt = f"Log2FC threshold of {log2}"
+
+    lines = lines.replace("$LOG2FC", log_txt)
+    return lines
+
+
 def run():
-    violin_plots()
+    generate_combinations()

@@ -12,17 +12,24 @@ import pandas as pd
 from helpers.constants import *
 
 
-def get_genes(*, direction, condition, atlas):
+def get_genes(*, direction, condition, atlas, threshold=0, use_limit=None):
     condition = condition.strip().replace(" ", "_")
     filename = f"mito/{direction}_{atlas}_{condition}.csv"
+    if direction == "down" and atlas == "general":
+        filename = f"mito/up_general_{condition}.csv"
     df = pd.read_csv(filename)
     if "FDR" in df.columns:
         df = df[df["FDR"] <= 0.05]
     if "log2FC" in df.columns:
-        if direction == "up":
-            df = df[df["log2FC"] > 0]
+        if use_limit is None:
+            if direction == "up":
+                df = df[df["log2FC"] >= threshold]
+            else:
+                df = df[df["log2FC"] <= threshold]
         else:
-            df = df[df["log2FC"] < 0]
+            df = df[df["log2FC"] >= use_limit[0]]
+            df = df[df["log2FC"] <= use_limit[1]]
+
     return df["gene_id"].to_numpy()
 
 
